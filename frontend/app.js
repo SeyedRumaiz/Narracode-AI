@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Status Dot
     const apiStatusDot = document.getElementById('api-status-dot');
     const apiStatusText = document.getElementById('api-status-text');
+    const modeSelect = document.getElementById('mode-select');
+    const streamOutputText = document.getElementById('stream-output-text');
 
     // States
     const stateIdle = document.getElementById('state-idle');
@@ -62,6 +64,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const spaceComplexityBar = document.getElementById('space-complexity-bar');
     const complexityExplanationContent = document.getElementById('complexity-explanation-content');
 
+    const oldTimeComplexityValue = document.getElementById('old-time-complexity');
+    const oldTimeBar = document.getElementById('old-time-bar');
+    const newTimeComplexityValue = document.getElementById('new-time-complexity');
+    const newTimeBar = document.getElementById('new-time-bar');
+
     // Docs & Tests tab elements
     const docstringCodeBlock = document.getElementById('docstring-code-block');
     const copyDocstringBtn = document.getElementById('copy-docstring-btn');
@@ -110,10 +117,32 @@ document.addEventListener('DOMContentLoaded', () => {
         elementBar.style.backgroundColor = color;
     }
 
+    function stripCodeFences(text) {
+        if (typeof text !== 'string') return text;
+        let cleaned = text.trim();
+        if (cleaned.startsWith('```')) {
+            const lines = cleaned.split('\n');
+            if (lines.length >= 2 && lines[lines.length - 1].trim() === '```') {
+                cleaned = lines.slice(1, -1).join('\n');
+            } else {
+                cleaned = lines.slice(1).join('\n');
+            }
+        }
+        return cleaned.trim();
+    }
+
+    function safeCodeLanguage(lang) {
+        if (!lang) return 'python';
+        const normalized = lang.toLowerCase().trim();
+        if (normalized === 'c++') return 'cpp';
+        if (normalized === 'auto-detect' || normalized === 'auto' || normalized === 'detect') return 'python';
+        return normalized;
+    }
+
     // Initialize Lucide Icons
     lucide.createIcons();
 
-    // ─── Backend Connectivity Verification ───
+    // Backend Connectivity Verification
     async function checkApiStatus() {
         try {
             const res = await fetch(`${API_URL}/`);
@@ -133,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Poll API status every 10 seconds
     setInterval(checkApiStatus, 10000);
 
-    // ─── Textarea Line Number Syncing ───
+    // Textarea Line Number Syncing
     function updateLineNumbers() {
         const lines = codeTextarea.value.split('\n');
         const count = Math.max(1, lines.length);
@@ -162,24 +191,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Tab Switching Logic
-    tabButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const targetTab = btn.getAttribute('data-tab');
-            
-            // Toggle active tab buttons
-            tabButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            // Toggle active tab panels
-            tabPanels.forEach(p => {
-                if (p.id === targetTab) {
-                    p.classList.add('active');
-                } else {
-                    p.classList.remove('active');
-                }
-            });
+    const container = document.getElementById('swipe-container');
+    const panels = document.querySelectorAll('.tab-panel');
+    const buttons = document.querySelectorAll('.tab-btn');
+
+    let currentIndex = 0;
+
+    // move using scrollLeft
+    function goToTab(index) {
+        if (index < 0 || index >= panels.length) return;
+
+        currentIndex = index;
+
+        const width = container.clientWidth;
+
+        container.scrollTo({
+            left: width * index,
+            behavior: 'smooth'
         });
+
+        buttons.forEach((b, i) => {
+            b.classList.toggle('active', i === index);
+        });
+    }
+
+    // tab click
+    buttons.forEach((btn, index) => {
+        btn.addEventListener('click', () => {
+            goToTab(index);
+        });
+    });
+
+    // swipe
+    let startX = 0;
+
+    container.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+    });
+
+    container.addEventListener('touchend', (e) => {
+        const endX = e.changedTouches[0].clientX;
+        const diff = startX - endX;
+
+        if (diff > 50) goToTab(currentIndex + 1);
+        if (diff < -50) goToTab(currentIndex - 1);
     });
 
     // Loader Animation Steps
@@ -240,31 +295,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const selectedLang = languageSelect.value;
+        const selectedMode = modeSelect.value;
 
         // Toggle UI loading states
         analyzeBtn.disabled = true;
         analyzeSpinner.classList.add('active');
         showState(stateLoading);
         startLoaderAnimation();
+        streamOutputText.textContent = 'Waiting for live tokens...';
 
         try {
-            const response = await fetch(`${API_URL}/analyse`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    code: codeInput,
-                    language: selectedLang
-                })
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                const message = result.detail || 'Analysis request failed.';
-                throw { message, status: response.status };
-            }
+            const result = await streamAnalysis(codeInput, selectedLang, selectedMode);
 
             stopLoaderAnimation();
             renderAnalysisResults(result);
@@ -291,6 +332,77 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    async function streamAnalysis(code, language, mode) {
+        const response = await fetch(`${API_URL}/stream-analyse`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                code,
+                language,
+                mode,
+                session_id: 'default'
+            })
+        });
+
+        if (!response.ok) {
+            const result = await response.json();
+            throw { message: result.detail || 'Streaming analysis failed.', status: response.status };
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let assembledResult = null;
+
+        const parseEventChunk = (chunk) => {
+            let eventType = 'message';
+            let data = '';
+            const lines = chunk.split('\n');
+            lines.forEach((line) => {
+                if (line.startsWith('event:')) {
+                    eventType = line.replace('event:', '').trim();
+                }
+                if (line.startsWith('data:')) {
+                    data += line.replace('data:', '').trim();
+                }
+            });
+
+            if (!data) return;
+            try {
+                const payload = JSON.parse(data);
+                if (eventType === 'token') {
+                    streamOutputText.textContent += payload.text;
+                    streamOutputText.scrollTop = streamOutputText.scrollHeight;
+                }
+                if (eventType === 'result') {
+                    assembledResult = payload;
+                }
+            } catch (error) {
+                streamOutputText.textContent += data;
+            }
+        };
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            let parts = buffer.split('\n\n');
+            buffer = parts.pop();
+            parts.forEach(parseEventChunk);
+        }
+        if (buffer) {
+            parseEventChunk(buffer);
+        }
+
+        if (!assembledResult) {
+            throw { message: 'Streaming finished without a parseable result.' };
+        }
+
+        return assembledResult;
+    }
+
     // Rendering Engine
     function renderAnalysisResults(data) {
         currentLanguage = data.language || 'python';
@@ -305,6 +417,22 @@ document.addEventListener('DOMContentLoaded', () => {
             storyContent.textContent = data.story || 'No story provided.';
         }
 
+        // 2.3 Render Flowchart
+        const flowchartContainer = document.getElementById('flowchart-container');
+
+        if (flowchartContainer) {
+            const chart = data.flowchart || `flowchart TD\n    A[Start] --> B[Process Code]\n    B --> C[Generate Analysis]\n    C --> D[End]`;
+            const flowchartId = `generatedFlowchart-${Date.now()}`;
+
+            flowchartContainer.innerHTML = '';
+
+            mermaid.render(flowchartId, chart).then(({ svg }) => {
+                flowchartContainer.innerHTML = svg;
+            }).catch(err => {
+                console.error("Mermaid render error:", err);
+                flowchartContainer.innerHTML = '<p class="explanation-text">Unable to render flowchart. Please check the code structure or try a simpler snippet.</p>';
+            });
+        }
         // 2.5 Render Q&A Mode
         if (qaListItems) {
             qaListItems.innerHTML = '';
@@ -337,8 +465,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 2.7 Render Complexity Mode
-        currentDocstring = data.docstring || '';
-        currentUnitTests = data.unit_tests || '';
+        currentDocstring = stripCodeFences(data.docstring || '');
+        currentUnitTests = stripCodeFences(data.unit_tests || '');
 
         if (timeComplexityValue && timeComplexityBar) {
             setComplexityGauge(timeComplexityValue, timeComplexityBar, data.time_complexity);
@@ -348,6 +476,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (complexityExplanationContent) {
             complexityExplanationContent.textContent = data.complexity_explanation || 'No complexity analysis provided.';
+        }
+
+        // Render Optimizer Tab
+        const optimizedCodeBlock = document.getElementById('optimized-code-block');
+        const optimizationComparisonContent = document.getElementById('optimization-comparison-content');
+
+        if (optimizationComparisonContent) {
+            optimizationComparisonContent.textContent =
+                data.optimization_comparison ||
+                'No optimization analysis available.';
+        }
+
+        if (optimizedCodeBlock) {
+            const optimizedCode = stripCodeFences(data.optimized_code || '// No optimized code generated');
+            optimizedCodeBlock.textContent = optimizedCode;
+
+            let prismLang = safeCodeLanguage(currentLanguage);
+            optimizedCodeBlock.className = `language-${prismLang}`;
+            Prism.highlightElement(optimizedCodeBlock);
+        }
+
+        if (oldTimeComplexityValue && oldTimeBar) {
+            setComplexityGauge(oldTimeComplexityValue, oldTimeBar, data.time_complexity || 'O(1)');
+        }
+        if (newTimeComplexityValue && newTimeBar) {
+            setComplexityGauge(newTimeComplexityValue, newTimeBar, data.optimized_time_complexity || data.time_complexity || 'O(1)');
         }
 
         // 2.8 Render Docs & Tests Mode
@@ -459,6 +613,32 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 2000);
         }).catch(err => {
             console.error('Failed to copy text: ', err);
+        });
+    });
+
+    const copyOptimizedBtn = document.getElementById('copy-optimized-btn');
+    const copyOptimizedIcon = document.getElementById('copy-optimized-icon');
+    const copyOptimizedText = document.getElementById('copy-optimized-text');
+
+    copyOptimizedBtn.addEventListener('click', () => {
+        const optimizedCode =
+            document.getElementById('optimized-code-block').textContent;
+
+        if (!optimizedCode) return;
+
+        navigator.clipboard.writeText(optimizedCode).then(() => {
+
+            copyOptimizedIcon.setAttribute('data-lucide', 'check');
+            copyOptimizedText.textContent = 'Copied!';
+
+            lucide.createIcons();
+
+            setTimeout(() => {
+                copyOptimizedIcon.setAttribute('data-lucide', 'copy');
+                copyOptimizedText.textContent = 'Copy Optimized Code';
+
+                lucide.createIcons();
+            }, 2000);
         });
     });
 

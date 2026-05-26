@@ -10,6 +10,11 @@ from dotenv import load_dotenv
 
 from chains import build_code_analysis_chain
 
+from executor import run_python_code
+from visualizer import generate_flowchart, estimate_complexity
+from memory import save_memory
+
+
 load_dotenv()
 
 app = FastAPI(
@@ -30,21 +35,25 @@ app.add_middleware(
 class AnalyseRequest(BaseModel):
     code: str
     language: str = "auto-detect"
+    session_id: str = "default"
 
 
 class AnalyseResponse(BaseModel):
-    language: str = "python"
+    language: str = ""
     explanation: str = ""
     story: str = ""
-    bugs: list[dict] = []
+    bugs: list = []
     fixed_code: str = ""
-    improvements: list[str] = []
-    questions: list[dict] = []
-    time_complexity: str = "O(1)"
-    space_complexity: str = "O(1)"
+    improvements: list = []
+    questions: list = []
+    time_complexity: str = ""
+    space_complexity: str = ""
     complexity_explanation: str = ""
     docstring: str = ""
     unit_tests: str = ""
+    flowchart: str = ""
+    complexity: dict = {}
+    execution_output: dict = {}
 
 
 @app.get("/")
@@ -57,31 +66,18 @@ async def analyse_code(request: AnalyseRequest):
     if not request.code.strip():
         raise HTTPException(status_code=400, detail="Code input cannot be empty.")
 
-    openai_key = os.getenv("OPENAI_API_KEY", "")
-    gemini_key = os.getenv("GEMINI_API_KEY", "")
     ollama_model = os.getenv("OLLAMA_MODEL", "")
     deepseek_model = os.getenv("DEEPSEEK_MODEL", "")
     deepseek_key = os.getenv("DEEPSEEK_API_KEY", "")
 
-    has_openai = openai_key and openai_key.strip()
-    has_gemini = gemini_key and gemini_key.strip()
     has_ollama = ollama_model and ollama_model.strip()
-    has_deepseek = (
-    deepseek_key
-    and deepseek_key.strip()
-    )
+    has_deepseek = deepseek_key and deepseek_key.strip()
 
     model_name = None
     if has_ollama:
         provider = "ollama"
         api_key = "ollama"
         model_name = ollama_model
-    elif has_gemini:
-        provider = "google"
-        api_key = gemini_key
-    elif has_openai:
-        provider = "openai"
-        api_key = openai_key
     elif has_deepseek:
         provider = "deepseek"
         api_key = deepseek_key
@@ -108,6 +104,21 @@ async def analyse_code(request: AnalyseRequest):
             "language": request.language,
             "num_questions": num_questions
         })
-        return result
+
+        execution_output = run_python_code(request.code)
+        flowchart = generate_flowchart(request.code)
+        complexity = estimate_complexity(request.code)
+
+        save_memory(request.session_id, {
+            "code": request.code,
+            "result": result
+        })
+
+        return {
+            **result,
+            "execution_output": execution_output,
+            "flowchart": flowchart,
+            "complexity": complexity
+        }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))

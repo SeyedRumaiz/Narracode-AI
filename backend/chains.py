@@ -10,7 +10,7 @@ from langchain_core.output_parsers import StrOutputParser
 # Lets us insert a custom Python function inside the LangChain pipeline
 from langchain_core.runnables import RunnableLambda
 import json_repair  # To fix malformed JSON
-from langchain_google_genai import ChatGoogleGenerativeAI
+from fastapi.responses import StreamingResponse
 
 # System prompt for structured analysis
 SYSTEM_PROMPT = """You are an elite software engineer and debugging expert. 
@@ -74,46 +74,36 @@ def parse_json_output(text: str) -> dict:
         return json.loads(cleaned)
     except json.JSONDecodeError:
         return json_repair.repair_json(cleaned, return_objects=True)
-
-
-# Chain builder (one chain per request keeps it stateless)
-def build_code_analysis_chain(api_key: str, provider: str = "openai", model_name: str = None):
-    """
     
-    """
+def get_llm(provider, api_key, model_name=None):
+
     if provider == "ollama":
-        llm = ChatOpenAI(
+        return ChatOpenAI(
             model=model_name or "qwen2.5-coder:1.5b",
-            temperature=0.2,
-            api_key="ollama",
             base_url="http://localhost:11434/v1",
-        )
-    elif provider == "google":
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash",
+            api_key="ollama",
             temperature=0.2,
-            google_api_key=api_key,
         )
-    elif provider == "deepseek":
-        llm = ChatOpenAI(
+
+    if provider == "deepseek":
+        return ChatOpenAI(
             model="deepseek-chat",
-            temperature=0.2,
             api_key=api_key,
             base_url="https://api.deepseek.com/v1",
-        )
-    else:
-        llm = ChatOpenAI(
-            model="gpt-4o",
             temperature=0.2,
-            api_key=api_key,
         )
 
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", SYSTEM_PROMPT),
-            ("human", HUMAN_PROMPT),
-        ]
-    )
+    raise ValueError("Unsupported provider")
+
+
+def build_code_analysis_chain(api_key: str, provider: str = "openai", model_name: str = None):
+
+    llm = get_llm(provider, api_key, model_name)
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", SYSTEM_PROMPT),
+        ("human", HUMAN_PROMPT),
+    ])
 
     chain = (
         prompt

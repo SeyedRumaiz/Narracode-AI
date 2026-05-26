@@ -68,6 +68,11 @@
                             <option value="css">CSS</option>
                             <option value="sql">SQL</option>
                         </select>
+                        <select id="mode-select" class="select-dropdown" style="margin-left: 0.75rem;">
+                            <option value="intermediate">Intermediate</option>
+                            <option value="beginner">Beginner</option>
+                            <option value="expert">Expert</option>
+                        </select>
                     </div>
                 </div>
 
@@ -131,7 +136,10 @@ def calculate(arr):
                         </div>
                         <h3 id="loader-title">Analyzing Code</h3>
                         <p id="loader-description">Deconstructing syntax trees and examining logical execution pathways...</p>
-                        
+                        <div class="stream-output" id="stream-output">
+                            <div class="stream-output-label">Live analysis stream</div>
+                            <pre class="stream-output-text" id="stream-output-text">Waiting for live tokens...</pre>
+                        </div>
                         <div class="progress-steps">
                             <div class="step active" id="step-1">
                                 <i data-lucide="check" class="step-check"></i>
@@ -178,6 +186,10 @@ def calculate(arr):
                             <i data-lucide="book-open"></i>
                             <span>Code Story</span>
                         </button>
+                        <button class="tab-btn" data-tab="tab-flowchart">
+                            <i data-lucide="git-branch"></i>
+                            <span>Flow Chart</span>
+                        </button>
                         <button class="tab-btn" data-tab="tab-qa">
                             <i data-lucide="help-circle"></i>
                             <span>Q&A Mode</span>
@@ -185,6 +197,10 @@ def calculate(arr):
                         <button class="tab-btn" data-tab="tab-complexity">
                             <i data-lucide="bar-chart-2"></i>
                             <span>Complexity</span>
+                        </button>
+                        <button class="tab-btn" data-tab="tab-optimizer">
+                            <i data-lucide="rocket"></i>
+                            <span>Optimizer</span>
                         </button>
                         <button class="tab-btn" data-tab="tab-docs-tests">
                             <i data-lucide="file-code"></i>
@@ -201,7 +217,7 @@ def calculate(arr):
                         </button>
                     </div>
 
-                    <div class="dashboard-content">
+                    <div class="dashboard-content swipe-container" id="swipe-container">
                         <!-- Tab: Overview -->
                         <div class="tab-panel active" id="tab-overview">
                             <div class="card">
@@ -228,6 +244,21 @@ def calculate(arr):
                                     <p class="explanation-text" id="story-content" style="line-height: 1.8; font-size: 1rem; color: var(--text-primary);">
                                         Once upon a time in execution space...
                                     </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab: Flow Chart -->
+                        <div class="tab-panel" id="tab-flowchart">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Execution Flow Chart</h3>
+                                    <span class="language-badge" style="background: rgba(168, 85, 247, 0.1); border-color: rgba(168, 85, 247, 0.3); color: #c084fc;">Visual Path</span>
+                                </div>
+                                <div class="card-body" style="padding: 1.5rem; display: flex; justify-content: center; background: rgba(0, 0, 0, 0.2); overflow: auto;">
+                                    <div class="mermaid" id="flowchart-container" style="width: 100%; display: flex; justify-content: center;">
+                                        <!-- Flow chart will be rendered here -->
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -310,6 +341,64 @@ def calculate(arr):
                                     <p class="explanation-text" id="complexity-explanation-content">
                                         Complexity explanation goes here...
                                     </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab: Optimizer -->
+                        <div class="tab-panel" id="tab-optimizer">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Time Complexity Optimizer</h3>
+                                    <button class="btn btn-secondary btn-sm" id="copy-optimized-btn">
+                                        <i data-lucide="copy" id="copy-optimized-icon"></i>
+                                        <span id="copy-optimized-text">Copy Optimized Code</span>
+                                    </button>
+                                </div>
+                                <div class="card-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem;">
+                                    <div class="optimization-analysis-box" style="padding: 1.25rem; border-radius: var(--radius-sm); background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2);">
+                                        <h4 style="color: var(--accent-cyan); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                            <i data-lucide="trending-up"></i> Performance Gain Analysis
+                                        </h4>
+                                        <p id="optimization-comparison-content" class="explanation-text" style="font-size: 0.95rem; line-height: 1.6;">
+                                            Analyzing complexity improvement...
+                                        </p>
+                                        <!-- Complexity Comparison -->
+                                        <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.75rem;">
+
+                                            <!-- Original Complexity -->
+                                            <div>
+                                                <div style="display:flex; justify-content:space-between; margin-bottom:0.35rem;">
+                                                    <span style="color: var(--text-secondary);">Original Time Complexity</span>
+                                                    <strong id="old-time-complexity">O(n²)</strong>
+                                                </div>
+
+                                                <div style="height:8px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden;">
+                                                    <div id="old-time-bar"
+                                                        style="height:100%; width:85%; background:var(--accent-rose); transition:0.5s;">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Optimized Complexity -->
+                                            <div>
+                                                <div style="display:flex; justify-content:space-between; margin-bottom:0.35rem;">
+                                                    <span style="color: var(--text-secondary);">Optimized Time Complexity</span>
+                                                    <strong id="new-time-complexity">O(n)</strong>
+                                                </div>
+
+                                                <div style="height:8px; background:rgba(255,255,255,0.08); border-radius:999px; overflow:hidden;">
+                                                    <div id="new-time-bar"
+                                                        style="height:100%; width:60%; background:var(--accent-emerald); transition:0.5s;">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                    <div class="code-view-container" style="margin-top: 0.5rem;">
+                                        <pre class="prism-code-block"><code class="language-python" id="optimized-code-block"># Optimized code will go here</code></pre>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -413,6 +502,20 @@ def calculate(arr):
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+
+    <!-- Mermaid.js for Flow Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'dark',
+            securityLevel: 'loose',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true
+            }
+        });
+    </script>
 
     <!-- Main Logic Script -->
     <script src="app.js"></script>
