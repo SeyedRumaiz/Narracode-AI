@@ -1,1 +1,38 @@
+# Python virtual environments
+venv/
 backend/venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+backend/.env
+.env.*
+
+# Testing and coverage
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# IDE and editor files
+.vscode/
+.DS_Store
+*.swp
+*~
+
+# Node and build artifacts
+node_modules/
+npm-debug.log*
+yarn-error.log*
+build/
+dist/
+
+# Logs
+*.log
+
+# OS files
+Thumbs.db
