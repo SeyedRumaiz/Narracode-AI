@@ -60,10 +60,16 @@ async def analyse_code(request: AnalyseRequest):
     openai_key = os.getenv("OPENAI_API_KEY", "")
     gemini_key = os.getenv("GEMINI_API_KEY", "")
     ollama_model = os.getenv("OLLAMA_MODEL", "")
+    deepseek_model = os.getenv("DEEPSEEK_MODEL", "")
+    deepseek_key = os.getenv("DEEPSEEK_API_KEY", "")
 
-    has_openai = openai_key and openai_key.strip() and openai_key != "your_openai_api_key_here"
-    has_gemini = gemini_key and gemini_key.strip() and gemini_key != "your_gemini_api_key_here"
-    has_ollama = ollama_model and ollama_model.strip() and ollama_model != "your_ollama_model_here"
+    has_openai = openai_key and openai_key.strip()
+    has_gemini = gemini_key and gemini_key.strip()
+    has_ollama = ollama_model and ollama_model.strip()
+    has_deepseek = (
+    deepseek_key
+    and deepseek_key.strip()
+    )
 
     model_name = None
     if has_ollama:
@@ -76,6 +82,10 @@ async def analyse_code(request: AnalyseRequest):
     elif has_openai:
         provider = "openai"
         api_key = openai_key
+    elif has_deepseek:
+        provider = "deepseek"
+        api_key = deepseek_key
+        model_name = deepseek_model
     else:
         raise HTTPException(
             status_code=503,

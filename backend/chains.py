@@ -4,11 +4,13 @@ LangChain pipeline: prompt → LLM → structured JSON output.
 
 import json
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate   # Structured prompts
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnableLambda
-import json_repair
 
+# Lets us insert a custom Python function inside the LangChain pipeline
+from langchain_core.runnables import RunnableLambda
+import json_repair  # To fix malformed JSON
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 # System prompt for structured analysis
 SYSTEM_PROMPT = """You are an elite software engineer and debugging expert. 
@@ -76,6 +78,9 @@ def parse_json_output(text: str) -> dict:
 
 # Chain builder (one chain per request keeps it stateless)
 def build_code_analysis_chain(api_key: str, provider: str = "openai", model_name: str = None):
+    """
+    
+    """
     if provider == "ollama":
         llm = ChatOpenAI(
             model=model_name or "qwen2.5-coder:1.5b",
@@ -84,11 +89,17 @@ def build_code_analysis_chain(api_key: str, provider: str = "openai", model_name
             base_url="http://localhost:11434/v1",
         )
     elif provider == "google":
-        from langchain_google_genai import ChatGoogleGenerativeAI
         llm = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash",
             temperature=0.2,
             google_api_key=api_key,
+        )
+    elif provider == "deepseek":
+        llm = ChatOpenAI(
+            model="deepseek-chat",
+            temperature=0.2,
+            api_key=api_key,
+            base_url="https://api.deepseek.com/v1",
         )
     else:
         llm = ChatOpenAI(
