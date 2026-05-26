@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Narracode AI — Code Explainer & Debugger</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Prism.js Syntax Highlighting CSS (Tomorrow Night Theme) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    
+    <!-- Main Style Sheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Background Gradient Spheres -->
+    <div class="bg-sphere sphere-1"></div>
+    <div class="bg-sphere sphere-2"></div>
+    <div class="bg-sphere sphere-3"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="brand-icon">
+                    <i data-lucide="cpu" class="icon-pulse"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>Narracode AI</h1>
+                    <span class="sub-logo">Code Intelligence Engine</span>
+                </div>
+            </div>
+            
+            <div class="api-status" id="api-status-container">
+                <span class="status-dot offline" id="api-status-dot"></span>
+                <span class="status-text" id="api-status-text">Backend Connecting...</span>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="workspace">
+            <!-- Left Panel: Input -->
+            <section class="panel panel-input glass">
+                <div class="panel-header">
+                    <div class="panel-title">
+                        <i data-lucide="terminal"></i>
+                        <h2>Source Code Input</h2>
+                    </div>
+                    <div class="control-group">
+                        <label for="language-select" class="sr-only">Language</label>
+                        <select id="language-select" class="select-dropdown">
+                            <option value="auto-detect">🔍 Auto-Detect</option>
+                            <option value="python">Python</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="typescript">TypeScript</option>
+                            <option value="go">Go</option>
+                            <option value="rust">Rust</option>
+                            <option value="c++">C++</option>
+                            <option value="java">Java</option>
+                            <option value="html">HTML</option>
+                            <option value="css">CSS</option>
+                            <option value="sql">SQL</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="panel-body editor-wrapper">
+                    <!-- Code Editor Input with Line Numbers -->
+                    <div class="code-editor">
+                        <div class="line-numbers" id="line-numbers">1</div>
+                        <textarea id="code-textarea" class="code-textarea" placeholder="Paste your code snippet here to explain, debug, and optimize...
+For example:
+
+def calculate(arr):
+    for i in range(len(arr)):
+        val = arr[i]
+        if val = 10:  # Syntax bug!
+            print(val)
+        result = 10 / (val - 10)  # Division by zero risk!" spellcheck="false" autocomplete="off" autofocus></textarea>
+                    </div>
+                </div>
+
+                <div class="panel-footer">
+                    <button id="analyze-btn" class="btn btn-primary btn-glow">
+                        <span class="btn-text">Analyze Code</span>
+                        <i data-lucide="sparkles" class="btn-icon"></i>
+                        <span class="spinner" id="analyze-spinner"></span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Right Panel: Results Dashboard -->
+            <section class="panel panel-output glass">
+                <!-- Idle / Welcome State -->
+                <div class="state-container active" id="state-idle">
+                    <div class="welcome-box">
+                        <div class="welcome-icon">
+                            <i data-lucide="sparkles"></i>
+                        </div>
+                        <h3>Code Analyzer Ready</h3>
+                        <p>Paste a snippet of code on the left and trigger analysis. Synapse AI will analyze, locate bugs, generate clean fixes, and suggest architectural and performance improvements.</p>
+                        <div class="feature-bullets">
+                            <div class="feature-bullet">
+                                <i data-lucide="brain"></i>
+                                <span><strong>Explain:</strong> Step-by-step logic translation</span>
+                            </div>
+                            <div class="feature-bullet">
+                                <i data-lucide="bug"></i>
+                                <span><strong>Debug:</strong> Precision syntax & logic scan</span>
+                            </div>
+                            <div class="feature-bullet">
+                                <i data-lucide="zap"></i>
+                                <span><strong>Optimize:</strong> Professional best practices</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div class="state-container" id="state-loading">
+                    <div class="loader-box">
+                        <div class="loader-ring">
+                            <div></div><div></div><div></div><div></div>
+                        </div>
+                        <h3 id="loader-title">Analyzing Code</h3>
+                        <p id="loader-description">Deconstructing syntax trees and examining logical execution pathways...</p>
+                        
+                        <div class="progress-steps">
+                            <div class="step active" id="step-1">
+                                <i data-lucide="check" class="step-check"></i>
+                                <span class="step-label">Parsing syntax structure</span>
+                            </div>
+                            <div class="step" id="step-2">
+                                <i data-lucide="check" class="step-check"></i>
+                                <span class="step-label">Evaluating logic flows</span>
+                            </div>
+                            <div class="step" id="step-3">
+                                <i data-lucide="check" class="step-check"></i>
+                                <span class="step-label">Compiling fixes & improvements</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error State -->
+                <div class="state-container" id="state-error">
+                    <div class="error-box">
+                        <div class="error-icon">
+                            <i data-lucide="alert-triangle"></i>
+                        </div>
+                        <h3 id="error-title">Analysis Failed</h3>
+                        <p id="error-message">An unexpected error occurred. Please check the backend connection.</p>
+                        <div class="error-action" id="error-config-action" style="display: none;">
+                            <div class="config-note">
+                                <i data-lucide="key"></i>
+                                <span>To configure your API Key, create a <code>.env</code> file in the <code>backend/</code> folder:</span>
+                            </div>
+                            <pre class="code-block"><code>OPENAI_API_KEY=your_openai_api_key_here</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Success State: Result Dashboard -->
+                <div class="state-container" id="state-success">
+                    <div class="dashboard-tabs">
+                        <button class="tab-btn active" data-tab="tab-overview">
+                            <i data-lucide="brain"></i>
+                            <span>Overview</span>
+                        </button>
+                        <button class="tab-btn" data-tab="tab-story">
+                            <i data-lucide="book-open"></i>
+                            <span>Code Story</span>
+                        </button>
+                        <button class="tab-btn" data-tab="tab-qa">
+                            <i data-lucide="help-circle"></i>
+                            <span>Q&A Mode</span>
+                        </button>
+                        <button class="tab-btn" data-tab="tab-complexity">
+                            <i data-lucide="bar-chart-2"></i>
+                            <span>Complexity</span>
+                        </button>
+                        <button class="tab-btn" data-tab="tab-docs-tests">
+                            <i data-lucide="file-code"></i>
+                            <span>Docs & Tests</span>
+                        </button>
+                        <button class="tab-btn" data-tab="tab-bugs">
+                            <i data-lucide="bug"></i>
+                            <span class="tab-badge" id="bug-badge-count">0</span>
+                            <span>Bugs & Fixes</span>
+                        </button>
+                        <button class="tab-btn" data-tab="tab-optimizations">
+                            <i data-lucide="zap"></i>
+                            <span>Improvements</span>
+                        </button>
+                    </div>
+
+                    <div class="dashboard-content">
+                        <!-- Tab: Overview -->
+                        <div class="tab-panel active" id="tab-overview">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Analysis Summary</h3>
+                                    <span class="language-badge" id="detected-language-badge">Python</span>
+                                </div>
+                                <div class="card-body">
+                                    <p class="explanation-text" id="explanation-content">
+                                        This code snippet calculates and aggregates values...
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab: Code Story -->
+                        <div class="tab-panel" id="tab-story">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Story Mode</h3>
+                                    <span class="language-badge" id="story-language-badge" style="background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%); border-color: rgba(236, 72, 153, 0.4); color: white;">AI Narrative</span>
+                                </div>
+                                <div class="card-body">
+                                    <p class="explanation-text" id="story-content" style="line-height: 1.8; font-size: 1rem; color: var(--text-primary);">
+                                        Once upon a time in execution space...
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab: Q&A Mode -->
+                        <div class="tab-panel" id="tab-qa">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Interactive Q&A</h3>
+                                    <span class="language-badge" id="qa-badge" style="background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); border-color: rgba(59, 130, 246, 0.4); color: white;">Comprehension Check</span>
+                                </div>
+                                <div class="card-body" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;" id="qa-list-items">
+                                    <!-- Dynamic Q&A cards inserted here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab: Complexity -->
+                        <div class="tab-panel" id="tab-complexity">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem;">
+                                <!-- Time Complexity Card -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3>Time Complexity</h3>
+                                        <span class="language-badge" style="background: rgba(99, 102, 241, 0.1); border-color: rgba(99, 102, 241, 0.3); color: #a5b4fc;">Execution Cost</span>
+                                    </div>
+                                    <div class="card-body" style="padding: 1.5rem;">
+                                        <div class="complexity-gauge-container">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                                <span style="font-size: 0.9rem; color: var(--text-secondary);">Big-O Class:</span>
+                                                <strong id="time-complexity-value" style="font-size: 1.5rem; font-family: 'Fira Code', monospace; color: var(--text-primary);">O(1)</strong>
+                                            </div>
+                                            <div style="height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 0.5rem; border: 1px solid var(--border-color);">
+                                                <div id="time-complexity-bar" style="height: 100%; width: 20%; background: var(--accent-emerald); transition: width 0.8s ease-in-out, background 0.8s;"></div>
+                                            </div>
+                                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
+                                                <span>O(1)</span>
+                                                <span>O(log n)</span>
+                                                <span>O(n)</span>
+                                                <span>O(n²)</span>
+                                                <span>O(2ⁿ)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Space Complexity Card -->
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3>Space Complexity</h3>
+                                        <span class="language-badge" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); color: #a7f3d0;">Memory Cost</span>
+                                    </div>
+                                    <div class="card-body" style="padding: 1.5rem;">
+                                        <div class="complexity-gauge-container">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                                <span style="font-size: 0.9rem; color: var(--text-secondary);">Big-O Class:</span>
+                                                <strong id="space-complexity-value" style="font-size: 1.5rem; font-family: 'Fira Code', monospace; color: var(--text-primary);">O(1)</strong>
+                                            </div>
+                                            <div style="height: 8px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 0.5rem; border: 1px solid var(--border-color);">
+                                                <div id="space-complexity-bar" style="height: 100%; width: 20%; background: var(--accent-emerald); transition: width 0.8s ease-in-out, background 0.8s;"></div>
+                                            </div>
+                                            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
+                                                <span>O(1)</span>
+                                                <span>O(log n)</span>
+                                                <span>O(n)</span>
+                                                <span>O(n²)</span>
+                                                <span>O(2ⁿ)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Complexity Analysis Explanation -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Performance Analysis</h3>
+                                </div>
+                                <div class="card-body">
+                                    <p class="explanation-text" id="complexity-explanation-content">
+                                        Complexity explanation goes here...
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab: Docs & Tests -->
+                        <div class="tab-panel" id="tab-docs-tests">
+                            <!-- Card: Generated Docstring -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Standard Documentation</h3>
+                                    <button class="btn btn-secondary btn-sm" id="copy-docstring-btn">
+                                        <i data-lucide="copy" id="copy-docstring-icon"></i>
+                                        <span id="copy-docstring-text">Copy Docstring</span>
+                                    </button>
+                                </div>
+                                <div class="card-body" style="padding: 0;">
+                                    <div class="code-view-container" style="border: none; border-radius: 0;">
+                                        <pre class="prism-code-block"><code class="language-python" id="docstring-code-block"># Generated docstring will go here</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card: Generated Unit Tests -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Automated Unit Tests</h3>
+                                    <button class="btn btn-secondary btn-sm" id="copy-tests-btn">
+                                        <i data-lucide="copy" id="copy-tests-icon"></i>
+                                        <span id="copy-tests-text">Copy Tests</span>
+                                    </button>
+                                </div>
+                                <div class="card-body" style="padding: 0;">
+                                    <div class="code-view-container" style="border: none; border-radius: 0;">
+                                        <pre class="prism-code-block"><code class="language-python" id="tests-code-block"># Generated unit tests will go here</code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab: Bugs & Fixes -->
+                        <div class="tab-panel" id="tab-bugs">
+                            <!-- Bug Free Alert -->
+                            <div class="no-bugs-alert" id="no-bugs-container">
+                                <div class="no-bugs-icon">
+                                    <i data-lucide="shield-check"></i>
+                                </div>
+                                <h4>No Bugs Detected!</h4>
+                                <p>Synapse AI scanned your code and found zero syntax or logic issues. The implementation looks clean and robust.</p>
+                            </div>
+
+                            <!-- Bug List -->
+                            <div class="bug-list-container" id="bug-list-container">
+                                <h3>Detected Issues</h3>
+                                <div class="bug-list" id="bug-list-items">
+                                    <!-- Dynamic bugs inserted here -->
+                                </div>
+                            </div>
+
+                            <!-- Fixed Code Comparison Section -->
+                            <div class="fixed-code-section" id="fixed-code-section">
+                                <div class="section-header">
+                                    <h3>Refactored & Fixed Code</h3>
+                                    <button class="btn btn-secondary btn-sm" id="copy-fixed-btn">
+                                        <i data-lucide="copy" id="copy-icon"></i>
+                                        <span id="copy-text">Copy Code</span>
+                                    </button>
+                                </div>
+                                <div class="code-view-container">
+                                    <pre class="prism-code-block"><code class="language-python" id="fixed-code-block"># Fixed code will be populated here</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab: Optimizations -->
+                        <div class="tab-panel" id="tab-optimizations">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3>Architectural Suggestions</h3>
+                                </div>
+                                <div class="card-body">
+                                    <ul class="suggestions-list" id="suggestions-list-items">
+                                        <!-- Dynamic suggestions here -->
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Prism.js Core & Language Auto-loaders -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+
+    <!-- Main Logic Script -->
+    <script src="app.js"></script>
+</body>
+</html>
