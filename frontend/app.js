@@ -162,24 +162,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Tab Switching Logic
-    tabButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const targetTab = btn.getAttribute('data-tab');
-            
-            // Toggle active tab buttons
-            tabButtons.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            // Toggle active tab panels
-            tabPanels.forEach(p => {
-                if (p.id === targetTab) {
-                    p.classList.add('active');
-                } else {
-                    p.classList.remove('active');
-                }
-            });
+    const container = document.getElementById('swipe-container');
+    const panels = document.querySelectorAll('.tab-panel');
+    const buttons = document.querySelectorAll('.tab-btn');
+
+    let currentIndex = 0;
+
+    // move using scrollLeft
+    function goToTab(index) {
+        if (index < 0 || index >= panels.length) return;
+
+        currentIndex = index;
+
+        const width = container.clientWidth;
+
+        container.scrollTo({
+            left: width * index,
+            behavior: 'smooth'
         });
+
+        buttons.forEach((b, i) => {
+            b.classList.toggle('active', i === index);
+        });
+    }
+
+    // tab click
+    buttons.forEach((btn, index) => {
+        btn.addEventListener('click', () => {
+            goToTab(index);
+        });
+    });
+
+    // swipe
+    let startX = 0;
+
+    container.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+    });
+
+    container.addEventListener('touchend', (e) => {
+        const endX = e.changedTouches[0].clientX;
+        const diff = startX - endX;
+
+        if (diff > 50) goToTab(currentIndex + 1);
+        if (diff < -50) goToTab(currentIndex - 1);
     });
 
     // Loader Animation Steps
