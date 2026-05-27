@@ -142,6 +142,27 @@ Request body:
 
 The streaming endpoint returns server-sent events containing token payloads as the LLM generates the JSON analysis output.
 
+### Async job submission
+
+`POST /api/v1/analysis/jobs`
+
+Submit a background analysis job. The request body is the same as `POST /api/v1/analysis`.
+
+The response returns:
+
+```json
+{
+  "job_id": "<celery-task-id>",
+  "status": "PENDING"
+}
+```
+
+### Async job status
+
+`GET /api/v1/analysis/jobs/{job_id}`
+
+Poll the job for completion and retrieve the final result when available.
+
 ### Session history
 
 `GET /api/v1/analysis/{session_id}`
