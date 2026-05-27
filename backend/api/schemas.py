@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -35,3 +35,22 @@ class AnalyseResponse(BaseModel):
     optimized_time_complexity: str = ""
     optimized_space_complexity: str = ""
     optimized_complexity: Dict[str, Any] = Field(default_factory=dict)
+
+
+class AnalysisJobRequest(AnalyseRequest):
+    """Request model for async analysis job submissions."""
+
+
+class AnalysisJobResponse(BaseModel):
+    """Response returned when a job is created."""
+
+    job_id: str
+    status: str = "pending"
+
+
+class AnalysisJobStatus(BaseModel):
+    """Status response for an async analysis job."""
+
+    job_id: str
+    status: str
+    result: Optional[AnalyseResponse] = None
