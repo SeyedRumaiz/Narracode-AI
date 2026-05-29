@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta http-equiv="expires" content="0" />
     <title>Narracode AI — Code Explainer & Debugger</title>
     
     <!-- Google Fonts -->
@@ -110,7 +113,7 @@ def calculate(arr):
                             <i data-lucide="sparkles"></i>
                         </div>
                         <h3>Code Analyzer Ready</h3>
-                        <p>Paste a snippet of code on the left and trigger analysis. Synapse AI will analyze, locate bugs, generate clean fixes, and suggest architectural and performance improvements.</p>
+                        <p>Paste a snippet of code on the left and trigger analysis. Narracode AI will analyze, locate bugs, generate clean fixes, and suggest architectural and performance improvements.</p>
                         <div class="feature-bullets">
                             <div class="feature-bullet">
                                 <i data-lucide="brain"></i>
@@ -137,8 +140,8 @@ def calculate(arr):
                         <h3 id="loader-title">Analyzing Code</h3>
                         <p id="loader-description">Deconstructing syntax trees and examining logical execution pathways...</p>
                         <div class="stream-output" id="stream-output">
-                            <div class="stream-output-label">Live analysis stream</div>
-                            <pre class="stream-output-text" id="stream-output-text">Waiting for live tokens...</pre>
+                            <div class="stream-output-label">Analysis progress</div>
+                            <pre class="stream-output-text" id="stream-output-text">Preparing analysis request...</pre>
                         </div>
                         <div class="progress-steps">
                             <div class="step active" id="step-1">
@@ -446,7 +449,7 @@ def calculate(arr):
                                     <i data-lucide="shield-check"></i>
                                 </div>
                                 <h4>No Bugs Detected!</h4>
-                                <p>Synapse AI scanned your code and found zero syntax or logic issues. The implementation looks clean and robust.</p>
+                                <p>Narracode AI scanned your code and found zero syntax or logic issues. The implementation looks clean and robust.</p>
                             </div>
 
                             <!-- Bug List -->
@@ -518,6 +521,6 @@ def calculate(arr):
     </script>
 
     <!-- Main Logic Script -->
-    <script src="app.js"></script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>
