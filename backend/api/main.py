@@ -1,5 +1,6 @@
 """AI Code Explainer & Debugger — LangChain-powered FastAPI backend."""
 
+import asyncio
 import json
 import os
 from typing import Any, Dict, List
@@ -16,7 +17,7 @@ from backend.api.schemas import (
     AnalysisJobResponse,
     AnalysisJobStatus,
 )
-from backend.chains import build_code_analysis_chain, build_code_analysis_stream_chain, normalize_analysis_output, parse_json_output
+from backend.chains import build_code_analysis_chain, normalize_analysis_output
 from backend.storage.history import get_history, save_history
 from backend.tasks.analysis_tasks import run_code_analysis_task
 from backend.tasks.celery_app import celery_app
@@ -90,6 +91,22 @@ def _build_response(result: dict[str, Any], code: str) -> dict[str, Any]:
     return enrich_analysis_result(result, code)
 
 
+def get_analysis_timeout() -> int:
+    """Return the configured analysis timeout in seconds."""
+    return int(os.getenv("ANALYSIS_TIMEOUT", "60"))
+
+
+async def invoke_chain_with_timeout(chain: Any, inputs: Dict[str, Any], timeout: int = 60) -> Any:
+    """Invoke a blocking chain on a thread and fail fast if it takes too long."""
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(chain.invoke, inputs), timeout=timeout)
+    except asyncio.TimeoutError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=f"LLM provider request timed out after {timeout} seconds.",
+        ) from exc
+
+
 @app.post("/api/v1/analysis", response_model=AnalyseResponse, status_code=status.HTTP_201_CREATED)
 async def create_analysis(request: AnalyseRequest) -> dict[str, Any]:
     """Analyse a code snippet and return structured explanation, fixes, and metrics."""
@@ -106,74 +123,40 @@ async def create_analysis(request: AnalyseRequest) -> dict[str, Any]:
             mode=request.mode,
             code=request.code,
         )
-        raw_result = chain.invoke({
-            "code": request.code,
-            "language": request.language,
-            "num_questions": num_questions,
-        })
+        raw_result = await invoke_chain_with_timeout(
+            chain,
+            {
+                "code": request.code,
+                "language": request.language,
+                "num_questions": num_questions,
+            },
+            timeout=get_analysis_timeout(),
+        )
 
         result = normalize_analysis_output(raw_result, request.code, request.language)
         save_history(request.session_id, {"code": request.code, "result": result})
         return _build_response(result, request.code)
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
 
 
 @app.post("/api/v1/analysis/stream")
 async def stream_analysis(request: AnalyseRequest) -> StreamingResponse:
-    """Stream analysis tokens back to the client via server-sent events."""
-    if not request.code.strip():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Code input cannot be empty.")
+    """Deprecated streaming endpoint that emits a single SSE done or error event."""
+    async def event_generator():
+        try:
+            result = await create_analysis(request)
+            yield f"event: done\ndata: {json.dumps({'result': result})}\n\n"
+        except HTTPException as exc:
+            yield f"event: error\ndata: {json.dumps({'error': exc.detail})}\n\n"
+        except Exception as exc:
+            yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
 
-    try:
-        provider, api_key, model_name = select_provider()
-        num_questions = compute_question_count(request.code)
-        llm, prompt = build_code_analysis_stream_chain(
-            api_key,
-            provider=provider,
-            model_name=model_name,
-            mode=request.mode,
-            code=request.code,
-        )
-        message_objects = prompt.format_messages(
-            code=request.code,
-            language=request.language,
-            num_questions=num_questions,
-        )
-
-        def event_generator() -> Any:
-            raw_stream_text = ""
-            try:
-                for event in llm.stream(message_objects):
-                    token_text = getattr(event, "text", None)
-                    if token_text is None:
-                        token_text = getattr(event, "content", None)
-                    if isinstance(token_text, list):
-                        token_text = "".join(str(chunk) for chunk in token_text)
-                    if token_text is None:
-                        token_text = str(event)
-
-                    if not token_text:
-                        continue
-
-                    raw_stream_text += token_text
-                    yield f"event: token\ndata: {json.dumps({'token': token_text})}\n\n"
-            except Exception as exc:
-                yield f"event: error\ndata: {json.dumps({'error': str(exc)})}\n\n"
-                return
-
-            try:
-                parsed_result = parse_json_output(raw_stream_text)
-                normalized_result = normalize_analysis_output(parsed_result, request.code, request.language)
-                yield f"event: done\ndata: {json.dumps({'result': normalized_result})}\n\n"
-            except Exception as exc:
-                yield f"event: error\ndata: {json.dumps({'error': f'Failed to parse streamed analysis result: {exc}'})}\n\n"
-
-        return StreamingResponse(event_generator(), media_type="text/event-stream")
-    except Exception as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @app.post("/analyse", response_model=AnalyseResponse)
@@ -184,5 +167,5 @@ async def analyse_code_alias(request: AnalyseRequest) -> dict[str, Any]:
 
 @app.post("/stream-analyse")
 async def stream_analysis_alias(request: AnalyseRequest) -> StreamingResponse:
-    """Legacy alias for the /api/v1/analysis/stream endpoint."""
+    """Legacy alias for the deprecated streaming endpoint."""
     return await stream_analysis(request)
