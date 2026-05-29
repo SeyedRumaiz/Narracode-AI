@@ -177,11 +177,16 @@ Create a `.env` file in the root or `backend/` directory with the following valu
 
 ```bash
 OPENAI_API_KEY=your_openai_key
+OPENAI_MODEL=gpt-4o
 DEEPSEEK_API_KEY=your_deepseek_key
+DEEPSEEK_MODEL=deepseek-chat
 OLLAMA_MODEL=qwen2.5-coder:1.5b
+ANALYSIS_TIMEOUT=60
 ```
 
 > If you use Ollama locally, set `OLLAMA_MODEL` to the model name available on your machine.
+>
+> `ANALYSIS_TIMEOUT` controls how long the backend waits for the LLM provider before returning a 504.
 
 ---
 
