@@ -1,5 +1,5 @@
 import unittest
-from chains import parse_json_output
+from backend.chains import parse_json_output
 
 class TestChainsParser(unittest.TestCase):
     def test_parse_raw_json(self):
@@ -19,6 +19,12 @@ class TestChainsParser(unittest.TestCase):
         result = parse_json_output(markdown_json)
         self.assertEqual(result["language"], "go")
         self.assertEqual(result["explanation"], "test go")
+
+    def test_parse_triple_quotes(self):
+        triple_quotes_json = '{"language": "python", "docstring": """\ndef foo():\n    """\n    docstring\n    """\n    pass\n""", "bugs": []}'
+        result = parse_json_output(triple_quotes_json)
+        self.assertEqual(result["language"], "python")
+        self.assertEqual(result["docstring"], '\ndef foo():\n    """\n    docstring\n    """\n    pass\n')
 
 if __name__ == "__main__":
     unittest.main()

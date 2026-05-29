@@ -42,7 +42,11 @@
 
 body {
     font-family: 'Outfit', sans-serif;
-    background-color: var(--bg-dark);
+    background-color: #05070f;
+    background-image:
+        radial-gradient(circle at 20% 10%, rgba(99, 102, 241, 0.16), transparent 28%),
+        radial-gradient(circle at 85% 15%, rgba(56, 189, 248, 0.12), transparent 25%),
+        radial-gradient(circle at 15% 80%, rgba(16, 185, 129, 0.1), transparent 22%);
     color: var(--text-primary);
     min-height: 100vh;
     overflow-x: hidden;
@@ -86,9 +90,9 @@ body {
 
 /* ─── App Container & Header ─── */
 .app-container {
-    max-width: 1600px;
+    max-width: 1620px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 2rem 2.25rem;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -226,22 +230,65 @@ body {
     }
 }
 
+@media (max-width: 720px) {
+    .app-container {
+        padding: 1.25rem 1rem;
+    }
+
+    .panel-header,
+    .card-header,
+    .panel-footer {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .panel-footer {
+        justify-content: center;
+    }
+
+    .dashboard-tabs {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 0.75rem 0.5rem;
+    }
+
+    .tab-btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.82rem;
+    }
+
+    .code-editor {
+        grid-template-columns: 1fr;
+    }
+
+    .line-numbers {
+        display: none;
+    }
+}
+
 /* ─── Glassmorphism Panels ─── */
 .panel {
     border-radius: var(--radius-xl);
-    background: var(--bg-surface);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--border-color);
-    box-shadow: 0 16px 48px var(--glow-surface);
+    background: linear-gradient(180deg, rgba(15, 20, 45, 0.95), rgba(9, 12, 24, 0.86));
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transition: border-color var(--transition-normal);
+    transition: transform var(--transition-normal), border-color var(--transition-normal), box-shadow var(--transition-normal);
 }
 
-.panel:hover {
-    border-color: var(--border-hover);
+.panel:hover,
+.card:hover,
+.bug-card:hover,
+.btn-primary:hover,
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    border-color: rgba(99, 102, 241, 0.35);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
 }
 
 .panel-header {
@@ -410,8 +457,9 @@ body {
     width: 100%;
     height: 100%;
     padding: 1.5rem;
-    background: transparent;
-    border: none;
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
     color: var(--text-primary);
     font-family: inherit;
     font-size: inherit;
@@ -422,6 +470,7 @@ body {
     white-space: pre;
     word-wrap: normal;
     tab-size: 4;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
 .code-textarea::placeholder {
@@ -442,6 +491,10 @@ body {
 .state-container.active {
     display: flex;
     opacity: 1;
+}
+
+#state-success {
+    padding: 0;
 }
 
 /* Welcome Box (Idle) */
@@ -528,6 +581,36 @@ body {
     position: relative;
     width: 80px;
     height: 80px;
+}
+
+.stream-output {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    max-height: 220px;
+    overflow: hidden;
+}
+
+.stream-output-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.stream-output-text {
+    margin: 0;
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: 'Fira Code', monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    overflow: auto;
+    max-height: 160px;
+    white-space: pre-wrap;
 }
 
 .loader-ring div {
@@ -680,17 +763,24 @@ body {
 
 .dashboard-tabs {
     display: flex;
+    overflow-x: auto;
     border-bottom: 1px solid var(--border-color);
     background: rgba(255, 255, 255, 0.01);
+    scrollbar-width: none; /* Hide scrollbar for Firefox */
+}
+
+.dashboard-tabs::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for Chrome/Safari */
 }
 
 .tab-btn {
-    flex: 1;
+    flex-shrink: 0;
+    white-space: nowrap;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.6rem;
-    padding: 1rem;
+    padding: 1rem 1.5rem;
     background: transparent;
     border: none;
     border-bottom: 2px solid transparent;
@@ -732,20 +822,23 @@ body {
 
 .dashboard-content {
     flex: 1;
-    overflow-y: auto;
+    overflow: hidden;
     position: relative;
+    height: 100%;
 }
 
 .tab-panel {
-    display: none;
+    display: flex;
+    min-width: 100%;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    box-sizing: border-box;
     padding: 1.5rem;
     flex-direction: column;
     gap: 1.5rem;
     animation: fade-in 0.4s ease;
-}
-
-.tab-panel.active {
-    display: flex;
+    overflow-y: auto;
+    height: 100%;
 }
 
 /* Card Structures */
@@ -789,7 +882,21 @@ body {
     color: var(--text-secondary);
     font-size: 0.95rem;
     line-height: 1.7;
-    white-space: pre-line;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 100%;
+}
+
+.panel,
+.card,
+.card-body,
+.dashboard-content,
+.tab-panel,
+.panel-output,
+.panel-input {
+    min-width: 0;
+    max-width: 100%;
 }
 
 /* ─── Bug List Details ─── */
@@ -943,7 +1050,8 @@ body {
     margin: 0 !important;
     padding: 1.25rem !important;
     max-height: 400px;
-    overflow-y: auto;
+    overflow: auto;
+    max-width: 100%;
     background: transparent !important;
 }
 
