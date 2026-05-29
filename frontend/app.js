@@ -1,6 +1,7 @@
-/* Synapse AI — Client Logic */
+/* Narracode AI — Client Logic */
 
 const API_URL = 'http://localhost:8000';
+const API_ROOT = `${API_URL}/api/v1`;
 
 document.addEventListener('DOMContentLoaded', () => {
     // DOM Elements
@@ -222,6 +223,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // keep current panel aligned after resize
+    window.addEventListener('resize', () => {
+        goToTab(currentIndex);
+    });
+
     // swipe
     let startX = 0;
 
@@ -302,10 +308,10 @@ document.addEventListener('DOMContentLoaded', () => {
         analyzeSpinner.classList.add('active');
         showState(stateLoading);
         startLoaderAnimation();
-        streamOutputText.textContent = 'Waiting for live tokens...';
+        streamOutputText.textContent = 'Analyzing code without live streaming...';
 
         try {
-            const result = await streamAnalysis(codeInput, selectedLang, selectedMode);
+            const result = await fetchAnalysis(codeInput, selectedLang, selectedMode);
 
             stopLoaderAnimation();
             renderAnalysisResults(result);
@@ -316,10 +322,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (err) {
             stopLoaderAnimation();
-            errorMessage.textContent = err.message || 'Unable to communicate with the analysis server. Please make sure the backend FastAPI application is running.';
+            const message = err?.message || err?.statusText || 'Unable to communicate with the analysis server. Please make sure the backend FastAPI application is running.';
+            errorMessage.textContent = message;
             
             // Show configuration guide if API key is not configured
-            if (err.status === 503 || (err.message && err.message.includes('API key not configured'))) {
+            if (err?.status === 503 || (message && message.includes('API key not configured'))) {
                 errorConfigAction.style.display = 'block';
             } else {
                 errorConfigAction.style.display = 'none';
@@ -332,8 +339,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    async function streamAnalysis(code, language, mode) {
-        const response = await fetch(`${API_URL}/stream-analyse`, {
+    async function fetchAnalysis(code, language, mode) {
+        const response = await fetch(`${API_ROOT}/analysis`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -347,60 +354,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (!response.ok) {
-            const result = await response.json();
-            throw { message: result.detail || 'Streaming analysis failed.', status: response.status };
+            const result = await response.json().catch(() => ({}));
+            throw { message: result.detail || 'Analysis request failed.', status: response.status };
         }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let assembledResult = null;
-
-        const parseEventChunk = (chunk) => {
-            let eventType = 'message';
-            let data = '';
-            const lines = chunk.split('\n');
-            lines.forEach((line) => {
-                if (line.startsWith('event:')) {
-                    eventType = line.replace('event:', '').trim();
-                }
-                if (line.startsWith('data:')) {
-                    data += line.replace('data:', '').trim();
-                }
-            });
-
-            if (!data) return;
-            try {
-                const payload = JSON.parse(data);
-                if (eventType === 'token') {
-                    streamOutputText.textContent += payload.text;
-                    streamOutputText.scrollTop = streamOutputText.scrollHeight;
-                }
-                if (eventType === 'result') {
-                    assembledResult = payload;
-                }
-            } catch (error) {
-                streamOutputText.textContent += data;
-            }
-        };
-
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            let parts = buffer.split('\n\n');
-            buffer = parts.pop();
-            parts.forEach(parseEventChunk);
-        }
-        if (buffer) {
-            parseEventChunk(buffer);
-        }
-
-        if (!assembledResult) {
-            throw { message: 'Streaming finished without a parseable result.' };
-        }
-
-        return assembledResult;
+        const result = await response.json();
+        return result;
     }
 
     // Rendering Engine
